@@ -38,6 +38,7 @@ export interface IStorage {
   // Community methods
   followUser(followerId: number, followedId: number): Promise<void>;
   unfollowUser(followerId: number, followedId: number): Promise<void>;
+  isFollowing(followerId: number, followedId: number): Promise<boolean>;
   
   sessionStore: session.SessionStore;
 }
@@ -266,6 +267,11 @@ export class MemStorage implements IStorage {
     if (followEntryId) {
       this.follows.delete(followEntryId);
     }
+  }
+  
+  async isFollowing(followerId: number, followedId: number): Promise<boolean> {
+    return Array.from(this.follows.values())
+      .some(f => f.followerId === followerId && f.followedId === followedId);
   }
 }
 

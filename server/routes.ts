@@ -179,6 +179,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to unfollow user" });
     }
   });
+  
+  app.get("/api/follow/status/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const followerId = req.user!.id;
+      const followedId = parseInt(req.params.id);
+      
+      const isFollowing = await storage.isFollowing(followerId, followedId);
+      res.json({ isFollowing });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check follow status" });
+    }
+  });
 
   const httpServer = createServer(app);
 
