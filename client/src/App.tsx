@@ -11,6 +11,7 @@ import BookshelfPage from "@/pages/bookshelf-page";
 import DiscoverPage from "@/pages/discover-page";
 import CommunityPage from "@/pages/community-page";
 import UserProfilePage from "@/pages/user-profile-page";
+import MyProfilePage from "@/pages/my-profile-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
@@ -24,6 +25,7 @@ function Router() {
       <ProtectedRoute path="/bookshelf" component={BookshelfPage} />
       <ProtectedRoute path="/discover" component={DiscoverPage} />
       <ProtectedRoute path="/community" component={CommunityPage} />
+      <ProtectedRoute path="/profile" component={MyProfilePage} />
       <ProtectedRoute path="/users/:id" component={UserProfilePage} />
       <Route component={NotFound} />
     </Switch>

@@ -133,6 +133,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
+  
+  app.patch("/api/users/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const userId = parseInt(req.params.id);
+      
+      // Users can only update their own profile
+      if (req.user!.id !== userId) {
+        return res.status(403).json({ message: "Not authorized to update this user" });
+      }
+      
+      const { name, bio } = req.body;
+      const updates: any = {};
+      
+      if (name !== undefined) updates.name = name;
+      if (bio !== undefined) updates.bio = bio;
+      
+      const updatedUser = await storage.updateUser(userId, updates);
+      
+      // Don't return the password
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
 
   app.get("/api/users/:id/books", async (req, res) => {
     try {

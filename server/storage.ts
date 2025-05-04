@@ -21,6 +21,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, updates: Partial<User>): Promise<User>;
   getActiveUsers(): Promise<User[]>;
 
   // Book methods
@@ -33,12 +34,15 @@ export interface IStorage {
   getUserBook(id: number): Promise<UserBook | undefined>;
   addBookToUser(userBook: InsertUserBook): Promise<UserBookWithDetails>;
   updateUserBook(id: number, updates: Partial<UserBook>): Promise<UserBookWithDetails>;
+  deleteUserBook(id: number): Promise<void>;
   getPublicUserBooks(userId: number): Promise<UserBookWithDetails[]>;
 
   // Community methods
   followUser(followerId: number, followedId: number): Promise<void>;
   unfollowUser(followerId: number, followedId: number): Promise<void>;
   isFollowing(followerId: number, followedId: number): Promise<boolean>;
+  getFollowers(userId: number): Promise<User[]>;
+  getFollowing(userId: number): Promise<User[]>;
   
   sessionStore: session.SessionStore;
 }
@@ -272,6 +276,61 @@ export class MemStorage implements IStorage {
   async isFollowing(followerId: number, followedId: number): Promise<boolean> {
     return Array.from(this.follows.values())
       .some(f => f.followerId === followerId && f.followedId === followedId);
+  }
+
+  async updateUser(id: number, updates: Partial<User>): Promise<User> {
+    const user = this.users.get(id);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // Create updated user while preserving the password
+    const updatedUser: User = { ...user, ...updates };
+    this.users.set(id, updatedUser);
+    
+    return updatedUser;
+  }
+
+  async deleteUserBook(id: number): Promise<void> {
+    if (!this.userBooks.has(id)) {
+      throw new Error("User book not found");
+    }
+    
+    this.userBooks.delete(id);
+  }
+
+  async getFollowers(userId: number): Promise<User[]> {
+    const followerIds = Array.from(this.follows.values())
+      .filter(f => f.followedId === userId)
+      .map(f => f.followerId);
+    
+    return Promise.all(
+      followerIds.map(async id => {
+        const user = await this.getUser(id);
+        if (!user) throw new Error(`User with id ${id} not found`);
+        
+        // Remove password for security
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword as User;
+      })
+    );
+  }
+
+  async getFollowing(userId: number): Promise<User[]> {
+    const followingIds = Array.from(this.follows.values())
+      .filter(f => f.followerId === userId)
+      .map(f => f.followedId);
+    
+    return Promise.all(
+      followingIds.map(async id => {
+        const user = await this.getUser(id);
+        if (!user) throw new Error(`User with id ${id} not found`);
+        
+        // Remove password for security
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword as User;
+      })
+    );
   }
 }
 
