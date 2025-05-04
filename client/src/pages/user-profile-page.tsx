@@ -16,21 +16,27 @@ import { ArrowLeft, BookOpen, CheckCircle, Library, Users } from "lucide-react";
 export default function UserProfilePage() {
   const { toast } = useToast();
   const { id } = useParams<{ id: string }>();
+  console.log('UserProfilePage: id param =', id);
   const [, navigate] = useLocation();
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<"reading" | "finished" | "want_to_read" | "all">("all");
   const [isFollowing, setIsFollowing] = useState(false);
 
-  // Fetch user profile data
-  const { data: profileUser, isLoading: isLoadingUser } = useQuery<Omit<User, 'password'>>({
-    queryKey: [`/api/users/${id}`],
-  });
-
-  // Fetch public books of the user
-  const { data: userBooks = [], isLoading: isLoadingBooks } = useQuery<UserBookWithDetails[]>({
-    queryKey: [`/api/users/${id}/books`],
+  // Fetch user profile data (new endpoint)
+  const { data: profileData, isLoading: isLoadingUser } = useQuery({
+    queryKey: ["/api/users", id, "profile"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${id}/profile`, { credentials: "include" });
+      if (!res.ok) throw new Error("User not found");
+      return res.json();
+    },
     enabled: !!id,
   });
+
+  const profileUser = profileData?.user;
+  const publicBooks = profileData?.publicBooks || [];
+  const followersCount = profileData?.followersCount || 0;
+  const followingCount = profileData?.followingCount || 0;
 
   // Check if current user is following this user
   const { data: followingStatus } = useQuery<{isFollowing: boolean}>({
@@ -45,7 +51,7 @@ export default function UserProfilePage() {
   }, [followingStatus]);
 
   // Filter books based on active tab
-  const filteredBooks = userBooks.filter(book => {
+  const filteredBooks = publicBooks.filter((book: any) => {
     if (activeTab !== "all" && book.status !== activeTab) {
       return false;
     }
@@ -54,10 +60,10 @@ export default function UserProfilePage() {
 
   // Count books by status
   const bookCounts = {
-    reading: userBooks.filter(book => book.status === "reading").length,
-    finished: userBooks.filter(book => book.status === "finished").length,
-    wantToRead: userBooks.filter(book => book.status === "want_to_read").length,
-    total: userBooks.length,
+    reading: publicBooks.filter((book: any) => book.status === "reading").length,
+    finished: publicBooks.filter((book: any) => book.status === "finished").length,
+    wantToRead: publicBooks.filter((book: any) => book.status === "want_to_read").length,
+    total: publicBooks.length,
   };
 
   const handleFollowToggle = async () => {
@@ -178,7 +184,7 @@ export default function UserProfilePage() {
               <div className="flex items-center">
                 <Users className="h-5 w-5 mr-2 text-blue-500" />
                 <span className="text-sm">
-                  <span className="font-semibold">42</span> Followers
+                  <span className="font-semibold">{followingCount}</span> Followers
                 </span>
               </div>
             </div>
@@ -202,6 +208,7 @@ export default function UserProfilePage() {
           <TabsTrigger value="bookshelf">Bookshelf</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="reviews">Reviews</TabsTrigger>
+          <TabsTrigger value="all">Public Books</TabsTrigger>
         </TabsList>
         
         <TabsContent value="bookshelf" className="mt-6">
@@ -215,7 +222,7 @@ export default function UserProfilePage() {
             onTabChange={setActiveTab}
           />
           
-          {isLoadingBooks ? (
+          {isLoadingUser ? (
             <div className="py-10 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
               <p className="mt-4 text-gray-600 dark:text-gray-400">Loading books...</p>
@@ -281,6 +288,52 @@ export default function UserProfilePage() {
               Reviews coming soon!
             </p>
           </div>
+        </TabsContent>
+        
+        <TabsContent value="all" className="mt-6">
+          <h3 className="text-xl font-bold mb-4">Public Books</h3>
+          {isLoadingUser ? (
+            <div className="py-10 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading books...</p>
+            </div>
+          ) : filteredBooks.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredBooks.map((userBook) => (
+                <div key={userBook.id} className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                  <img
+                    src={userBook.book.coverImage || "https://via.placeholder.com/400x600?text=No+Cover"}
+                    className="w-full h-48 object-cover"
+                    alt={`Cover for ${userBook.book.title}`}
+                  />
+                  <div className="p-4">
+                    <h4 className="font-serif font-medium text-md mb-1 truncate">{userBook.book.title}</h4>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">{userBook.book.author}</p>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                        {userBook.status === "reading" ? "Reading" : 
+                         userBook.status === "finished" ? "Finished" : "Want to Read"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) :
+            <Card>
+              <CardContent className="py-10 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="text-5xl mb-4">📚</div>
+                  <h3 className="text-xl font-semibold mb-2">No public books to display</h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                    {activeTab === "all"
+                      ? `${profileUser.name} hasn't added any public books yet.`
+                      : `${profileUser.name} doesn't have any public books in the "${activeTab}" category.`}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          }
         </TabsContent>
       </Tabs>
     </div>

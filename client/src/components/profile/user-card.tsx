@@ -30,6 +30,11 @@ export function UserCard({
       .toUpperCase();
   };
 
+  if (!user.id) {
+    console.error('UserCard: user.id is missing!', user);
+    return null;
+  }
+
   const handleFollowClick = () => {
     if (isFollowing) {
       onUnfollow?.();

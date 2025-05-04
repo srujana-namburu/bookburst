@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { useTheme } from "@/hooks/use-theme";
+import { usePreferences } from "@/context/PreferencesContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export default function Navbar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { preferences, setPreferences } = usePreferences();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -92,11 +92,11 @@ export default function Navbar() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
                     <div className="flex items-center justify-between w-full">
-                      <span>{theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
+                      <span>{preferences.theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
                       <Switch
-                        checked={theme === 'dark'}
+                        checked={preferences.theme === 'dark'}
                         onCheckedChange={(checked) => 
-                          setTheme(checked ? 'dark' : 'light')
+                          setPreferences({ theme: checked ? 'dark' : 'light' })
                         }
                         className="ml-2"
                       />
@@ -222,12 +222,12 @@ export default function Navbar() {
               </Link>
               <div className="px-4 py-2 flex items-center justify-between">
                 <span className="text-base font-medium text-gray-500">
-                  {theme === 'dark' ? 'Light' : 'Dark'} Mode
+                  {preferences.theme === 'dark' ? 'Light' : 'Dark'} Mode
                 </span>
                 <Switch
-                  checked={theme === 'dark'}
+                  checked={preferences.theme === 'dark'}
                   onCheckedChange={(checked) => 
-                    setTheme(checked ? 'dark' : 'light')
+                    setPreferences({ theme: checked ? 'dark' : 'light' })
                   }
                 />
               </div>
@@ -254,7 +254,7 @@ export default function Navbar() {
             </Link>
             <Link href="/auth">
               <a 
-                className="block text-center w-full py-2 text-base font-medium text-white bg-primary hover:bg-primary/90 rounded"
+                className="block text-center w-full py-2 text-base font-medium bg-primary text-white hover:bg-primary/90 rounded"
                 onClick={closeMobileMenu}
               >
                 Sign up

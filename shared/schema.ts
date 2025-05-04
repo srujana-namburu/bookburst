@@ -75,6 +75,22 @@ export const followsRelations = relations(follows, ({ one }) => ({
   }),
 }));
 
+export const userPreferences = pgTable("user_preferences", {
+  userId: integer("user_id").primaryKey().references(() => users.id),
+  theme: text("theme").default("light"),
+  lastActiveTab: text("last_active_tab"),
+  recentlyViewedBooks: text("recently_viewed_books").array(),
+  readingTime: integer("reading_time").default(0),
+  lastActiveTimestamp: timestamp("last_active_timestamp").defaultNow(),
+});
+
+export const userPreferencesRelations = relations(userPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [userPreferences.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -101,3 +117,6 @@ export type UserBook = typeof userBooks.$inferSelect;
 export type UserBookWithDetails = UserBook & {
   book: Book;
 };
+
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type InsertUserPreferences = typeof userPreferences.$inferInsert;

@@ -28,6 +28,14 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
+// Session refresh middleware
+function sessionRefresh(req: any, res: any, next: any) {
+  if (req.session) {
+    req.session.touch();
+  }
+  next();
+}
+
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'BOOKBURST_SECRET_KEY',
@@ -37,11 +45,15 @@ export function setupAuth(app: Express) {
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+      sameSite: 'lax',
+      httpOnly: true,
+      path: '/'
     }
   };
 
   app.set("trust proxy", 1);
   app.use(session(sessionSettings));
+  app.use(sessionRefresh); // Add session refresh middleware
   app.use(passport.initialize());
   app.use(passport.session());
 

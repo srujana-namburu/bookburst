@@ -17,6 +17,7 @@ import { Search } from "lucide-react";
 import { insertUserBookSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 type Book = {
   id: number;
@@ -60,6 +61,7 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
   const [rating, setRating] = useState(0);
   const [isPublic, setIsPublic] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const bookForm = useForm<BookFormValues>({
     resolver: zodResolver(bookFormSchema),
@@ -120,6 +122,7 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
       
       // Add book to user's shelf
       const userBookData: BookDetailsValues = {
+        userId: user?.id!,
         bookId: book.id,
         status: readingStatus,
         progress: readingStatus === "reading" ? progress : null,
@@ -270,18 +273,22 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
                       <FormField
                         control={bookForm.control}
                         name="coverImage"
-                        render={({ field }) => (
-                          <FormItem className="w-full">
-                            <FormControl>
-                              <Input
-                                placeholder="Image URL"
-                                {...field}
-                                className="text-xs"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const { value, ...rest } = field;
+                          return (
+                            <FormItem className="w-full">
+                              <FormControl>
+                                <Input
+                                  placeholder="Image URL"
+                                  {...rest}
+                                  className="text-xs"
+                                  value={typeof value === 'string' ? value : ''}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                     </div>
                   </div>
@@ -351,30 +358,36 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
                       <FormField
                         control={bookForm.control}
                         name="publicationDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Publication Date</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const { value, ...rest } = field;
+                          return (
+                            <FormItem>
+                              <FormLabel>Publication Date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...rest} value={typeof value === 'string' ? value : ''} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                     </div>
                     
                     <FormField
                       control={bookForm.control}
                       name="isbn"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>ISBN (optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="ISBN" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                      render={({ field }) => {
+                        const { value, ...rest } = field;
+                        return (
+                          <FormItem>
+                            <FormLabel>ISBN (optional)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="ISBN" {...rest} value={typeof value === 'string' ? value : ''} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
                   </div>
                 </div>
@@ -453,13 +466,27 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
             />
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="public-review" 
-              checked={isPublic}
-              onCheckedChange={(checked) => setIsPublic(checked as boolean)}
-            />
-            <Label htmlFor="public-review">Make my review public</Label>
+          <div className="flex items-center gap-4 mt-4">
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                name="visibility"
+                value="public"
+                checked={isPublic === true}
+                onChange={() => setIsPublic(true)}
+              />
+              Public
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                name="visibility"
+                value="private"
+                checked={isPublic === false}
+                onChange={() => setIsPublic(false)}
+              />
+              Private
+            </label>
           </div>
         </div>
 

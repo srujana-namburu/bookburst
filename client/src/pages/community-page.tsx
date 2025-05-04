@@ -98,21 +98,22 @@ export default function CommunityPage() {
     const fetchStatuses = async () => {
       const statuses: Record<number, boolean> = {};
       await Promise.all(
-        filteredUsers.map(async (user) => {
-          try {
-            const res = await fetch(`/api/follow/status/${user.id}`, { credentials: "include" });
-            if (res.ok) {
-              const data = await res.json();
-              statuses[user.id] = data.isFollowing;
-            }
-          } catch {}
-        })
+        users
+          .filter(user => user.id !== currentUser.id)
+          .map(async (user) => {
+            try {
+              const res = await fetch(`/api/follow/status/${user.id}`, { credentials: "include" });
+              if (res.ok) {
+                const data = await res.json();
+                statuses[user.id] = data.isFollowing;
+              }
+            } catch {}
+          })
       );
       setFollowStatus(statuses);
     };
     fetchStatuses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredUsers.map(u => u.id).join(","), currentUser?.id]);
+  }, [users, currentUser?.id]);
 
   const handleFollowUser = async (userId: number) => {
     try {

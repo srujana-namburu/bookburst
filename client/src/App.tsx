@@ -4,6 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "./hooks/use-auth";
+import { PreferencesProvider } from "./context/PreferencesContext";
+import { ReadingTimeTracker } from "./components/ReadingTimeTracker";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
@@ -36,17 +38,20 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <div className="flex flex-col min-h-screen">
-            <Navbar />
-            <main className="flex-grow">
-              <Router />
-            </main>
-            <Footer />
-            <CookieBanner />
-            <Toaster />
-          </div>
-        </TooltipProvider>
+        <PreferencesProvider>
+          <TooltipProvider>
+            <div className="flex flex-col min-h-screen">
+              <Navbar />
+              <main className="flex-grow">
+                <Router />
+              </main>
+              <Footer />
+              <CookieBanner />
+              <Toaster />
+              <ReadingTimeTracker />
+            </div>
+          </TooltipProvider>
+        </PreferencesProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

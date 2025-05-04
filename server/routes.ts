@@ -4,10 +4,14 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { z } from "zod";
 import { insertBookSchema, insertUserBookSchema } from "@shared/schema";
+import { preferencesRouter } from "./preferences-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup auth routes (/api/register, /api/login, /api/logout, /api/user)
   setupAuth(app);
+
+  // Add preferences routes
+  app.use("/api/preferences", preferencesRouter);
 
   // Books API
   app.get("/api/books", async (req, res) => {
@@ -200,6 +204,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(publicUserBooks);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch user books" });
+    }
+  });
+
+  app.get("/api/users/:id/profile", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      console.log('GET /api/users/:id/profile userId =', userId);
+      const user = await storage.getUser(userId);
+      console.log('GET /api/users/:id/profile user =', user);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      // Remove password
+      const { password, ...userWithoutPassword } = user;
+      // Get public books
+      const publicBooks = await storage.getPublicUserBooks(userId);
+      // Get followers and following counts
+      const followers = await storage.getFollowers(userId);
+      const following = await storage.getFollowing(userId);
+      res.json({
+        user: userWithoutPassword,
+        publicBooks,
+        followersCount: followers.length,
+        followingCount: following.length
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user profile" });
     }
   });
 
