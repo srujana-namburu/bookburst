@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Book, UserBook } from "@shared/schema";
 import { StarRating } from "@/components/ui/star-rating";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -47,18 +47,18 @@ export function BookDetailsDialog({
 }: BookDetailsDialogProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>("details");
-  const [progress, setProgress] = useState<number>(userBook?.progress || 0);
-  const [review, setReview] = useState<string>(userBook?.review || "");
-  const [rating, setRating] = useState<number>(userBook?.rating || 0);
+  const [progress, setProgress] = useState<number>(0);
+  const [review, setReview] = useState<string>("");
+  const [rating, setRating] = useState<number>(0);
 
   // Update local state when userBook changes
-  useState(() => {
+  useEffect(() => {
     if (userBook) {
       setProgress(userBook.progress || 0);
       setReview(userBook.review || "");
       setRating(userBook.rating || 0);
     }
-  });
+  }, [userBook]);
 
   const handleSaveProgress = async () => {
     if (!userBook) return;
