@@ -1,0 +1,68 @@
+import { pgTable, text, serial, integer, boolean, timestamp, foreignKey } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  name: text("name").notNull(),
+  bio: text("bio"),
+  profilePicture: text("profile_picture"),
+});
+
+export const books = pgTable("books", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  author: text("author").notNull(),
+  coverImage: text("cover_image"),
+  genre: text("genre"),
+  publicationDate: text("publication_date"),
+  isbn: text("isbn"),
+});
+
+export const userBooks = pgTable("user_books", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  bookId: integer("book_id").notNull().references(() => books.id),
+  status: text("status").notNull(), // "reading", "finished", "want_to_read"
+  progress: integer("progress"), // 0-100%
+  rating: integer("rating"), // 1-5
+  review: text("review"),
+  isPublic: boolean("is_public").default(false),
+  dateAdded: timestamp("date_added").defaultNow(),
+  dateUpdated: timestamp("date_updated").defaultNow(),
+});
+
+export const follows = pgTable("follows", {
+  id: serial("id").primaryKey(),
+  followerId: integer("follower_id").notNull().references(() => users.id),
+  followedId: integer("followed_id").notNull().references(() => users.id),
+});
+
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+  name: true,
+});
+
+export const insertBookSchema = createInsertSchema(books);
+
+export const insertUserBookSchema = createInsertSchema(userBooks).omit({
+  id: true,
+  dateAdded: true,
+  dateUpdated: true,
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+
+export type InsertBook = z.infer<typeof insertBookSchema>;
+export type Book = typeof books.$inferSelect;
+
+export type InsertUserBook = z.infer<typeof insertUserBookSchema>;
+export type UserBook = typeof userBooks.$inferSelect;
+
+export type UserBookWithDetails = UserBook & {
+  book: Book;
+};
