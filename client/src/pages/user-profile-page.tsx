@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { ArrowLeft, BookOpen, CheckCircle, Library, Users } from "lucide-react";
+import { ReviewCard } from "@/components/review/review-card";
 
 export default function UserProfilePage() {
   const { toast } = useToast();
@@ -65,6 +66,17 @@ export default function UserProfilePage() {
     wantToRead: publicBooks.filter((book: any) => book.status === "want_to_read").length,
     total: publicBooks.length,
   };
+
+  // Fetch user reviews for this profile
+  const { data: userReviews = [], isLoading: isLoadingReviews } = useQuery({
+    queryKey: ["/api/user-books", id, "reviews"],
+    queryFn: async () => {
+      const res = await fetch(`/api/user-books?userId=${id}&withReviews=true`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch user reviews");
+      return res.json();
+    },
+    enabled: !!id,
+  });
 
   const handleFollowToggle = async () => {
     if (!currentUser) {
@@ -282,12 +294,36 @@ export default function UserProfilePage() {
           <h3 className="font-serif text-2xl font-bold text-gray-800 dark:text-gray-100 mb-6">
             Reviews
           </h3>
-          
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 text-center">
-            <p className="text-gray-600 dark:text-gray-400">
-              Reviews coming soon!
-            </p>
-          </div>
+          {isLoadingReviews ? (
+            <div className="py-10 text-center">Loading reviews...</div>
+          ) : userReviews.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6">
+              {userReviews.map((review: any) => (
+                <ReviewCard
+                  key={review.id}
+                  user={profileUser}
+                  book={review.book}
+                  rating={review.rating || 0}
+                  review={review.review}
+                  likes={0}
+                  comments={0}
+                  date={review.dateUpdated || review.date}
+                />
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="text-5xl mb-4">📝</div>
+                  <h3 className="text-xl font-semibold mb-2">No reviews found</h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                    {profileUser.name} hasn't written any reviews yet.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
         
         <TabsContent value="all" className="mt-6">

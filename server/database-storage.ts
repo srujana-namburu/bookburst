@@ -313,4 +313,22 @@ export class DatabaseStorage implements IStorage {
       comments: 0 // Placeholder for now
     }));
   }
+
+  async getUserBooksWithReviews(userId: number): Promise<UserBookWithDetails[]> {
+    const result = await db.select({
+      userBook: userBooks,
+      book: books
+    }).from(userBooks)
+      .innerJoin(books, eq(userBooks.bookId, books.id))
+      .where(
+        and(
+          eq(userBooks.userId, userId),
+          sql`${userBooks.review} IS NOT NULL AND ${userBooks.review} <> ''`
+        )
+      );
+    return result.map(row => ({
+      ...row.userBook,
+      book: row.book
+    }));
+  }
 }

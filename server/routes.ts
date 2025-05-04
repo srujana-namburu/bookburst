@@ -55,14 +55,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // User Books API (bookshelf)
   app.get("/api/user-books", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
     try {
-      const userId = req.user!.id;
-      const userBooks = await storage.getUserBooks(userId);
-      res.json(userBooks);
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : null;
+      const withReviews = req.query.withReviews === 'true';
+      let books;
+      if (userId && withReviews) {
+        // Return all user_books for this user with non-null reviews
+        books = await storage.getUserBooksWithReviews(userId);
+      } else if (userId) {
+        books = await storage.getUserBooks(userId);
+      } else {
+        return res.status(400).json({ message: "Missing userId parameter" });
+      }
+      res.json(books);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch user books" });
     }
