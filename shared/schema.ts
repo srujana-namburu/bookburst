@@ -1,5 +1,6 @@
-import { pgTable, text, serial, integer, boolean, timestamp, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { relations } from "drizzle-orm";
 import { z } from "zod";
 
 export const users = pgTable("users", {
@@ -11,6 +12,12 @@ export const users = pgTable("users", {
   profilePicture: text("profile_picture"),
 });
 
+export const usersRelations = relations(users, ({ many }) => ({
+  userBooks: many(userBooks),
+  followedBy: many(follows, { relationName: "followed" }),
+  following: many(follows, { relationName: "follower" }),
+}));
+
 export const books = pgTable("books", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -20,6 +27,10 @@ export const books = pgTable("books", {
   publicationDate: text("publication_date"),
   isbn: text("isbn"),
 });
+
+export const booksRelations = relations(books, ({ many }) => ({
+  userBooks: many(userBooks),
+}));
 
 export const userBooks = pgTable("user_books", {
   id: serial("id").primaryKey(),
@@ -34,11 +45,35 @@ export const userBooks = pgTable("user_books", {
   dateUpdated: timestamp("date_updated").defaultNow(),
 });
 
+export const userBooksRelations = relations(userBooks, ({ one }) => ({
+  user: one(users, {
+    fields: [userBooks.userId],
+    references: [users.id],
+  }),
+  book: one(books, {
+    fields: [userBooks.bookId],
+    references: [books.id],
+  }),
+}));
+
 export const follows = pgTable("follows", {
   id: serial("id").primaryKey(),
   followerId: integer("follower_id").notNull().references(() => users.id),
   followedId: integer("followed_id").notNull().references(() => users.id),
 });
+
+export const followsRelations = relations(follows, ({ one }) => ({
+  follower: one(users, {
+    fields: [follows.followerId],
+    references: [users.id],
+    relationName: "follower",
+  }),
+  followed: one(users, {
+    fields: [follows.followedId],
+    references: [users.id],
+    relationName: "followed",
+  }),
+}));
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
