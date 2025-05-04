@@ -26,8 +26,8 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
@@ -61,7 +61,7 @@ export class DatabaseStorage implements IStorage {
     // Get all users, excluding sensitive info like passwords
     const allUsers = await db.select({
       id: users.id,
-      username: users.username,
+      email: users.email,
       name: users.name,
       bio: users.bio,
       profilePicture: users.profilePicture
@@ -206,7 +206,7 @@ export class DatabaseStorage implements IStorage {
   async getFollowers(userId: number): Promise<User[]> {
     const result = await db.select({
       id: users.id,
-      username: users.username,
+      email: users.email,
       name: users.name,
       bio: users.bio,
       profilePicture: users.profilePicture
@@ -221,7 +221,7 @@ export class DatabaseStorage implements IStorage {
   async getFollowing(userId: number): Promise<User[]> {
     const result = await db.select({
       id: users.id,
-      username: users.username,
+      email: users.email,
       name: users.name,
       bio: users.bio,
       profilePicture: users.profilePicture
@@ -262,7 +262,7 @@ export class DatabaseStorage implements IStorage {
       user: {
         id: row.user.id,
         name: row.user.name,
-        username: row.user.username,
+        email: row.user.email,
         profilePicture: row.user.profile_picture
       },
       book: {

@@ -154,7 +154,7 @@ export default function UserProfilePage() {
             <h2 className="font-serif text-3xl font-bold text-gray-800 dark:text-gray-100 mb-1">
               {profileUser.name}
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">@{profileUser.username}</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{profileUser.email}</p>
             
             <div className="flex flex-wrap gap-4 justify-center md:justify-start mb-4">
               <div className="flex items-center">

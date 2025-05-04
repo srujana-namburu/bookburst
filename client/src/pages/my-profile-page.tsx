@@ -257,7 +257,7 @@ export default function MyProfilePage() {
                     <Pencil className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">@{user.username}</p>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">{user.email}</p>
                 {user.bio && (
                   <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-md">
                     {user.bio}

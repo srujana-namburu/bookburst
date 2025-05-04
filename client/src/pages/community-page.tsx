@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 type User = {
   id: number;
   name: string;
-  username: string;
+  email: string;
   profilePicture?: string;
   booksRead: number;
   genres: string[];
@@ -33,7 +33,7 @@ type Review = {
   user: {
     id: number;
     name: string;
-    username: string;
+    email: string;
     profilePicture?: string;
   };
   book: {
@@ -73,7 +73,7 @@ export default function CommunityPage() {
     const query = searchQuery.toLowerCase();
     return (
       user.id !== currentUser?.id &&
-      (user.name.toLowerCase().includes(query) || user.username.toLowerCase().includes(query))
+      (user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query))
     );
   });
 

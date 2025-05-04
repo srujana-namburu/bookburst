@@ -200,7 +200,7 @@ export default function Navbar() {
               </div>
               <div className="ml-3">
                 <div className="text-base font-medium text-gray-800 dark:text-gray-200">{user.name}</div>
-                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{user.username}</div>
+                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{user.email}</div>
               </div>
             </div>
             <div className="mt-3 space-y-1">

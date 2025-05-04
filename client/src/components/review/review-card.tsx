@@ -8,7 +8,7 @@ interface ReviewCardProps {
   user: {
     id: number;
     name: string;
-    username: string;
+    email: string;
     profilePicture?: string;
   };
   book: {
