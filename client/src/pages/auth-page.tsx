@@ -28,7 +28,7 @@ type RegisterValues = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
   const [location, navigate] = useLocation();
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation, registerMutation, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
 
   const loginForm = useForm<LoginValues>({
@@ -51,10 +51,11 @@ export default function AuthPage() {
 
   useEffect(() => {
     // Redirect to home if already logged in
-    if (user) {
+    if (!isLoading && user) {
+      console.log(user)
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, isLoading, navigate]);
 
   const onLoginSubmit = (data: LoginValues) => {
     loginMutation.mutate(data);
@@ -64,6 +65,10 @@ export default function AuthPage() {
     const { confirmPassword, ...userData } = data;
     registerMutation.mutate(userData);
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   if (user) {
     return null; // Redirect will handle this case

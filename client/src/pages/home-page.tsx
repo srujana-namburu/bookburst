@@ -27,9 +27,11 @@ export default function HomePage() {
   });
 
   const readingBooks = userBooks?.filter(book => book.status === "reading") || [];
-  const recentlyAddedBooks = [...(userBooks || [])].sort((a, b) => 
-    new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
-  ).slice(0, 4);
+  const recentlyAddedBooks = [...(userBooks || [])].sort((a, b) => {
+    const dateA = a.dateAdded ? new Date(a.dateAdded) : new Date(0);
+    const dateB = b.dateAdded ? new Date(b.dateAdded) : new Date(0); 
+    return dateB.getTime() - dateA.getTime();
+  }).slice(0, 4);
 
   const handleUpdateStatus = async (id: number, status: string) => {
     try {
@@ -81,7 +83,10 @@ export default function HomePage() {
           <div className="py-10 text-center">Loading your books...</div>
         ) : readingBooks.length > 0 ? (
           <BookGrid 
-            books={readingBooks} 
+            books={readingBooks.map(book => ({
+              ...book,
+              dateUpdated: book.dateUpdated || new Date()
+            }))}
             onUpdateStatus={handleUpdateStatus}
           />
         ) : (
@@ -110,7 +115,10 @@ export default function HomePage() {
             Recently Added
           </h2>
           <BookGrid 
-            books={recentlyAddedBooks} 
+            books={recentlyAddedBooks.map(book => ({
+              ...book,
+              dateUpdated: book.dateUpdated || new Date()
+            }))} 
             onUpdateStatus={handleUpdateStatus}
           />
         </section>
@@ -131,7 +139,7 @@ export default function HomePage() {
           <div className="py-10 text-center">Loading trending books...</div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {allBooks?.slice(0, 5).map(book => (
+            {(Array.isArray(allBooks) ? allBooks : []).slice(0, 5).map((book: any) => (
               <TrendingBookCard
                 key={book.id}
                 book={book}
