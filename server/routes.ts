@@ -289,8 +289,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public Reviews API
   app.get("/api/reviews", async (req, res) => {
     try {
-      // Get all public user_books with a review
-      const result = await storage.getAllPublicReviews();
+      // Get all user_books with a review (not just public)
+      const result = await storage.getAllReviews();
       res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch reviews" });

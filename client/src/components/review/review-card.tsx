@@ -70,26 +70,6 @@ export function ReviewCard({
       </div>
       <p className="text-gray-700 dark:text-gray-300 mb-4">{review}</p>
       <div className="flex justify-between items-center text-sm">
-        <div className="flex space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex items-center text-gray-500 dark:text-gray-400 hover:text-primary"
-            onClick={onLike}
-          >
-            <ThumbsUp className="h-4 w-4 mr-1" />
-            <span>{likes}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex items-center text-gray-500 dark:text-gray-400 hover:text-primary"
-            onClick={onComment}
-          >
-            <MessageSquare className="h-4 w-4 mr-1" />
-            <span>{comments} comments</span>
-          </Button>
-        </div>
         <span className="text-gray-500 dark:text-gray-400">{formatTimeAgo(date)}</span>
       </div>
     </div>
