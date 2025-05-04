@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingBookCard } from "@/components/book/trending-book-card";
 import { AddBookModal } from "@/components/book/add-book-modal";
 import { Book } from "@shared/schema";
-import { Search } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
+import { 
+  getUserBehavior, 
+  trackSearch, 
+  hasConsent, 
+  getPersonalizedGenres,
+  getPersonalizedBookRecommendations 
+} from "@/lib/cookie-manager";
 
 export default function DiscoverPage() {
   const { toast } = useToast();
@@ -17,14 +24,46 @@ export default function DiscoverPage() {
   const [selectedGenre, setSelectedGenre] = useState("all");
   const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [personalizedBooks, setPersonalizedBooks] = useState<Book[]>([]);
+  const [favGenres, setFavGenres] = useState<string[]>([]);
+  const [hasUserConsent, setHasUserConsent] = useState(false);
 
   // Fetch all books
   const { data: books = [], isLoading } = useQuery<Book[]>({
     queryKey: ["/api/books"],
   });
 
+  // Initialize personalization data
+  useEffect(() => {
+    if (books.length > 0) {
+      const consent = hasConsent();
+      setHasUserConsent(consent);
+      
+      if (consent) {
+        // Get personalized recommendations based on user behavior
+        const recommended = getPersonalizedBookRecommendations(books);
+        setPersonalizedBooks(recommended);
+        
+        // Get user's favorite genres based on behavior
+        const genres = getPersonalizedGenres();
+        setFavGenres(genres);
+      } else {
+        // If no consent, just use the regular books
+        setPersonalizedBooks(books);
+      }
+    }
+  }, [books]);
+
   // Get unique genres
-  const genres = ["all", ...new Set(books.map(book => book.genre).filter(Boolean))];
+  const uniqueGenres = Array.from(new Set(books.map(book => book.genre).filter(Boolean) as string[]));
+  const genres = ["all", ...uniqueGenres];
+
+  // Track search when query changes
+  useEffect(() => {
+    if (searchQuery.trim().length > 2) {
+      trackSearch(searchQuery);
+    }
+  }, [searchQuery]);
 
   // Filter books based on search and genre
   const filteredBooks = books.filter(book => {
@@ -157,17 +196,48 @@ export default function DiscoverPage() {
 
             {/* For You tab */}
             <TabsContent value="for-you">
+              {!hasUserConsent ? (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6 border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-start">
+                    <Sparkles className="h-5 w-5 text-amber-500 mr-3 mt-1 flex-shrink-0" />
+                    <div>
+                      <h3 className="font-serif text-xl font-semibold mb-2">
+                        Personalized Recommendations
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        Enable cookies for personalized book recommendations based on your reading preferences and browsing patterns.
+                      </p>
+                      <Button
+                        variant="outline" 
+                        size="sm"
+                        className="border-amber-500 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/50"
+                        onClick={() => {
+                          toast({
+                            title: "Cookie Settings",
+                            description: "You can enable personalization from the cookie banner at the bottom of the page."
+                          });
+                        }}
+                      >
+                        Enable Personalization
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              
               <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-10">
                 <h3 className="font-serif text-xl font-semibold text-primary mb-4">
                   Recommended For You
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                  Based on your reading history and preferences
+                  {hasUserConsent 
+                    ? "Personalized recommendations based on your reading history and preferences" 
+                    : "Popular books we think you might enjoy"}
                 </p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Recommendation cards */}
-                  {books.slice(0, 3).map(book => (
+                  {personalizedBooks.slice(0, 6).map(book => (
                     <div key={book.id} className="flex bg-bookcream-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                       <img 
                         src={book.coverImage || "https://via.placeholder.com/200x300?text=No+Cover"} 
@@ -177,9 +247,13 @@ export default function DiscoverPage() {
                       <div className="p-3 flex-1">
                         <h4 className="font-serif font-bold text-md mb-1">{book.title}</h4>
                         <p className="text-gray-600 dark:text-gray-400 text-xs mb-2">{book.author}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                          Because you enjoyed {book.genre} books
-                        </p>
+                        {hasUserConsent && book.genre && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            {favGenres.includes(book.genre) 
+                              ? `Because you enjoy ${book.genre} books`
+                              : book.genre}
+                          </p>
+                        )}
                         <div className="flex justify-between items-center">
                           <div className="flex text-yellow-400 text-xs">
                             ★★★★☆
