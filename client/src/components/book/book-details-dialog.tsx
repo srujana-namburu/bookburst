@@ -212,15 +212,6 @@ export function BookDetailsDialog({
                   <Button size="sm" onClick={handleSaveProgress}>Save Progress</Button>
                 </div>
               )}
-              
-              <Button
-                variant="destructive"
-                size="sm"
-                className="w-full mt-4"
-                onClick={handleDelete}
-              >
-                Remove from Shelf
-              </Button>
             </div>
           </div>
           

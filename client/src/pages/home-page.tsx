@@ -55,12 +55,6 @@ export default function HomePage() {
           <h1 className="font-serif text-4xl md:text-5xl font-bold leading-tight mb-6">Your Reading Journey Begins Here</h1>
           <p className="text-lg md:text-xl mb-8 max-w-2xl">Track your books, discover new stories, and connect with fellow readers in a community built for book lovers.</p>
           <div className="flex flex-wrap gap-4">
-            <Button 
-              className="bg-accent hover:bg-accent/90 text-primary-foreground font-medium py-3 px-6"
-              onClick={() => setIsAddBookModalOpen(true)}
-            >
-              Add Your First Book
-            </Button>
             <Link href="/discover">
               <Button variant="outline" className="bg-transparent border-2 border-white hover:bg-white/10 text-white font-medium py-3 px-6">
                 Explore Books
@@ -88,6 +82,14 @@ export default function HomePage() {
               dateUpdated: book.dateUpdated || new Date()
             }))}
             onUpdateStatus={handleUpdateStatus}
+            onUpdateProgress={async (id, progress) => {
+              try {
+                await apiRequest("PATCH", `/api/user-books/${id}`, { progress });
+                queryClient.invalidateQueries({ queryKey: ["/api/user-books"] });
+              } catch (error) {
+                console.error("Failed to update reading progress:", error);
+              }
+            }}
           />
         ) : (
           <Card>
