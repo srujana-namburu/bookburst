@@ -107,6 +107,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update user book" });
     }
   });
+  
+  app.delete("/api/user-books/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    try {
+      const userBookId = parseInt(req.params.id);
+      const userId = req.user!.id;
+      
+      // Check if this user book belongs to the current user
+      const userBook = await storage.getUserBook(userBookId);
+      if (!userBook || userBook.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to delete this book" });
+      }
+      
+      await storage.deleteUserBook(userBookId);
+      res.status(200).json({ message: "Book successfully removed from shelf" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete user book" });
+    }
+  });
 
   // User Community API
   app.get("/api/users", async (req, res) => {
