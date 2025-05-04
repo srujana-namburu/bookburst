@@ -232,4 +232,46 @@ export class DatabaseStorage implements IStorage {
     
     return result;
   }
+
+  async getAllPublicReviews() {
+    // Join user_books, users, and books for public reviews
+    const result = await db.select({
+      userBook: userBooks,
+      user: users,
+      book: books
+    })
+      .from(userBooks)
+      .innerJoin(users, eq(userBooks.userId, users.id))
+      .innerJoin(books, eq(userBooks.bookId, books.id))
+      .where(
+        and(
+          eq(userBooks.isPublic, true),
+          sql`${userBooks.review} IS NOT NULL AND ${userBooks.review} <> ''`
+        )
+      )
+      .orderBy(desc(userBooks.dateUpdated));
+
+    // Map to a flat structure for frontend
+    return result.map(row => ({
+      id: row.userBook.id,
+      userId: row.userBook.userId,
+      bookId: row.userBook.bookId,
+      rating: row.userBook.rating,
+      review: row.userBook.review,
+      date: row.userBook.dateUpdated,
+      user: {
+        id: row.user.id,
+        name: row.user.name,
+        username: row.user.username,
+        profilePicture: row.user.profile_picture
+      },
+      book: {
+        id: row.book.id,
+        title: row.book.title,
+        author: row.book.author
+      },
+      likes: 0, // Placeholder for now
+      comments: 0 // Placeholder for now
+    }));
+  }
 }

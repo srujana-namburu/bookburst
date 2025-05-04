@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { UserCard } from "@/components/profile/user-card";
 import { ReviewCard } from "@/components/review/review-card";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Search } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 // Mock types for the community page
 type User = {
@@ -17,6 +18,7 @@ type User = {
   profilePicture?: string;
   booksRead: number;
   genres: string[];
+  followersCount: number;
 };
 
 type Review = {
@@ -43,6 +45,7 @@ type Review = {
 
 export default function CommunityPage() {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState("reviews");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -51,42 +54,12 @@ export default function CommunityPage() {
     queryKey: ["/api/users"],
   });
 
-  // For the purpose of this example, we'll create mock reviews based on books
-  const { data: books = [] } = useQuery({
-    queryKey: ["/api/books"],
+  // Remove mockReviews and fetch real reviews
+  const { data: reviews = [] } = useQuery<Review[]>({
+    queryKey: ["/api/reviews"],
   });
 
-  // Create mock reviews based on books
-  const mockReviews: Review[] = books.slice(0, 5).map((book, index) => ({
-    id: index + 1,
-    userId: index % users.length + 1,
-    bookId: book.id,
-    rating: Math.floor(Math.random() * 5) + 1,
-    review: "This book was an incredible journey that took me through a range of emotions. The author's vivid descriptions and character development made me feel like I was right there experiencing the story firsthand. I highly recommend this to anyone looking for a thought-provoking read.",
-    likes: Math.floor(Math.random() * 200) + 50,
-    comments: Math.floor(Math.random() * 30) + 5,
-    date: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000),
-    user: users[index % users.length] || {
-      id: index + 1,
-      name: "User " + (index + 1),
-      username: "user" + (index + 1),
-      profilePicture: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-    },
-    book: {
-      id: book.id,
-      title: book.title,
-      author: book.author
-    }
-  }));
-
-  const filteredUsers = users.filter(user => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return user.name.toLowerCase().includes(query) || 
-           user.username.toLowerCase().includes(query);
-  });
-
-  const filteredReviews = mockReviews.filter(review => {
+  const filteredReviews = reviews.filter(review => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return review.book.title.toLowerCase().includes(query) ||
@@ -94,10 +67,58 @@ export default function CommunityPage() {
            review.user.name.toLowerCase().includes(query);
   });
 
+  // Filter out the current user from the users list
+  const filteredUsers = users.filter(user => {
+    if (!searchQuery) return user.id !== currentUser?.id;
+    const query = searchQuery.toLowerCase();
+    return (
+      user.id !== currentUser?.id &&
+      (user.name.toLowerCase().includes(query) || user.username.toLowerCase().includes(query))
+    );
+  });
+
+  // Store follow status for each user
+  const [followStatus, setFollowStatus] = useState<Record<number, boolean>>({});
+
+  // Store followers count for each user
+  const [followersCount, setFollowersCount] = useState<Record<number, number>>({});
+
+  // When users are loaded, initialize followersCount state
+  useEffect(() => {
+    const counts: Record<number, number> = {};
+    users.forEach(user => {
+      counts[user.id] = user.followersCount;
+    });
+    setFollowersCount(counts);
+  }, [users]);
+
+  // Fetch follow status for each user (except current user)
+  useEffect(() => {
+    if (!currentUser) return;
+    const fetchStatuses = async () => {
+      const statuses: Record<number, boolean> = {};
+      await Promise.all(
+        filteredUsers.map(async (user) => {
+          try {
+            const res = await fetch(`/api/follow/status/${user.id}`, { credentials: "include" });
+            if (res.ok) {
+              const data = await res.json();
+              statuses[user.id] = data.isFollowing;
+            }
+          } catch {}
+        })
+      );
+      setFollowStatus(statuses);
+    };
+    fetchStatuses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredUsers.map(u => u.id).join(","), currentUser?.id]);
+
   const handleFollowUser = async (userId: number) => {
     try {
       await apiRequest("POST", `/api/follow/${userId}`);
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setFollowStatus((prev) => ({ ...prev, [userId]: true }));
+      setFollowersCount((prev) => ({ ...prev, [userId]: (prev[userId] || 0) + 1 }));
       toast({
         title: "Success",
         description: "You are now following this user",
@@ -114,7 +135,8 @@ export default function CommunityPage() {
   const handleUnfollowUser = async (userId: number) => {
     try {
       await apiRequest("DELETE", `/api/follow/${userId}`);
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setFollowStatus((prev) => ({ ...prev, [userId]: false }));
+      setFollowersCount((prev) => ({ ...prev, [userId]: Math.max((prev[userId] || 1) - 1, 0) }));
       toast({
         title: "Success",
         description: "You have unfollowed this user",
@@ -214,8 +236,8 @@ export default function CommunityPage() {
                 filteredUsers.map(user => (
                   <UserCard
                     key={user.id}
-                    user={user}
-                    isFollowing={Math.random() > 0.5} // Mock following status
+                    user={{ ...user, followersCount: followersCount[user.id] ?? user.followersCount }}
+                    isFollowing={!!followStatus[user.id]}
                     onFollow={() => handleFollowUser(user.id)}
                     onUnfollow={() => handleUnfollowUser(user.id)}
                   />
@@ -223,9 +245,9 @@ export default function CommunityPage() {
               ) : (
                 <div className="col-span-3 text-center py-10">
                   <div className="text-5xl mb-4">👥</div>
-                  <h3 className="text-xl font-semibold mb-2">No users found</h3>
+                  <h3 className="text-xl font-semibold mb-2">No other users found</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {searchQuery ? "Try adjusting your search query." : "There are no active users at the moment."}
+                    {searchQuery ? "Try adjusting your search query." : "There are no other active users at the moment."}
                   </p>
                 </div>
               )}

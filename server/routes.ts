@@ -134,7 +134,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users", async (req, res) => {
     try {
       const users = await storage.getActiveUsers();
-      res.json(users);
+      // For each user, get their followers count
+      const usersWithFollowers = await Promise.all(users.map(async (user) => {
+        const followers = await storage.getFollowers(user.id);
+        return {
+          ...user,
+          followersCount: followers.length,
+        };
+      }));
+      res.json(usersWithFollowers);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch users" });
     }
@@ -244,6 +252,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ isFollowing });
     } catch (error) {
       res.status(500).json({ message: "Failed to check follow status" });
+    }
+  });
+
+  // Public Reviews API
+  app.get("/api/reviews", async (req, res) => {
+    try {
+      // Get all public user_books with a review
+      const result = await storage.getAllPublicReviews();
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch reviews" });
     }
   });
 

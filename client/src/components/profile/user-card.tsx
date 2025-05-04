@@ -9,6 +9,7 @@ interface UserCardProps {
     profilePicture?: string;
     booksRead: number;
     genres: string[];
+    followersCount?: number;
   };
   isFollowing?: boolean;
   onFollow?: () => void;
@@ -47,9 +48,12 @@ export function UserCard({
         <div>
           <h4 className="font-medium text-bookblue-800 dark:text-white">{user.name}</h4>
           <p className="text-gray-500 dark:text-gray-400 text-sm">{user.booksRead} books read this year</p>
-          <p className="text-gray-500 dark:text-gray-400 text-xs">
-            {user.genres.join(" • ")}
-          </p>
+          <p className="text-gray-500 dark:text-gray-400 text-xs">{(user.genres || []).join(" • ")}</p>
+          {typeof user.followersCount === "number" && (
+            <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">
+              <span className="font-semibold">{user.followersCount}</span> follower{user.followersCount === 1 ? "" : "s"}
+            </p>
+          )}
         </div>
       </Link>
       <Button
