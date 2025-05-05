@@ -81,6 +81,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBook(insertBook: InsertBook): Promise<Book> {
+    // Prevent duplicates: check for existing book with same title and author (case-insensitive)
+    const existing = await db.select().from(books)
+      .where(sql`LOWER(title) = LOWER(${insertBook.title}) AND LOWER(author) = LOWER(${insertBook.author})`)
+      .limit(1);
+    if (existing.length > 0) {
+      return existing[0];
+    }
     const [book] = await db.insert(books).values(insertBook).returning();
     return book;
   }
@@ -333,17 +340,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTrendingBooks(limit: number = 10): Promise<Array<{ book: Book, count: number }>> {
-    // Get top books by count of user_books
-    const result = await db.select({
-      book: books,
-      count: sql`COUNT(${userBooks.id})::int`
-    })
-      .from(userBooks)
-      .innerJoin(books, eq(userBooks.bookId, books.id))
-      .groupBy(books.id)
-      .orderBy(desc(sql`COUNT(${userBooks.id})`))
-      .limit(limit);
-    // Map to array of { book, count }
-    return result.map(row => ({ book: row.book, count: Number(row.count) }));
+    // Group by lower(title), lower(author) in user_books joined to books, count users, pick lowest id as representative
+    const result = await db.execute(sql`
+      SELECT
+        MIN(b.id) as id,
+        b.title,
+        b.author,
+        MIN(b.cover_image) as cover_image,
+        MIN(b.genre) as genre,
+        MIN(b.publication_date) as publication_date,
+        MIN(b.isbn) as isbn,
+        COUNT(DISTINCT ub.user_id)::int as count
+      FROM user_books ub
+      JOIN books b ON ub.book_id = b.id
+      GROUP BY LOWER(b.title), LOWER(b.author), b.title, b.author
+      ORDER BY count DESC
+      LIMIT ${limit}
+    `);
+    return result.rows.map((row: any) => {
+      const { count, cover_image, ...book } = row;
+      return { book: { ...book, coverImage: cover_image }, count: Number(count) };
+    });
   }
 }
