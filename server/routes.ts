@@ -56,16 +56,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User Books API (bookshelf)
   app.get("/api/user-books", async (req, res) => {
     try {
-      const userId = req.query.userId ? parseInt(req.query.userId as string) : null;
+      let userId = req.query.userId ? parseInt(req.query.userId as string) : null;
       const withReviews = req.query.withReviews === 'true';
       let books;
+      if (!userId && req.isAuthenticated() && req.user) {
+        userId = req.user.id;
+      }
       if (userId && withReviews) {
         // Return all user_books for this user with non-null reviews
         books = await storage.getUserBooksWithReviews(userId);
       } else if (userId) {
         books = await storage.getUserBooks(userId);
       } else {
-        return res.status(400).json({ message: "Missing userId parameter" });
+        return res.status(req.isAuthenticated() ? 400 : 401).json({ message: req.isAuthenticated() ? "Missing userId parameter" : "Not authenticated" });
       }
       res.json(books);
     } catch (error) {
@@ -299,6 +302,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  });
+
+  // Trending Books API
+  app.get("/api/trending-books", async (req, res) => {
+    try {
+      const trendingBooks = await storage.getTrendingBooks(10);
+      res.json(trendingBooks);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch trending books" });
     }
   });
 

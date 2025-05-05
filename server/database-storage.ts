@@ -331,4 +331,19 @@ export class DatabaseStorage implements IStorage {
       book: row.book
     }));
   }
+
+  async getTrendingBooks(limit: number = 10): Promise<Array<{ book: Book, count: number }>> {
+    // Get top books by count of user_books
+    const result = await db.select({
+      book: books,
+      count: sql`COUNT(${userBooks.id})::int`
+    })
+      .from(userBooks)
+      .innerJoin(books, eq(userBooks.bookId, books.id))
+      .groupBy(books.id)
+      .orderBy(desc(sql`COUNT(${userBooks.id})`))
+      .limit(limit);
+    // Map to array of { book, count }
+    return result.map(row => ({ book: row.book, count: Number(row.count) }));
+  }
 }

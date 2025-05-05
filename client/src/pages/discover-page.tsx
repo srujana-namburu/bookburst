@@ -33,6 +33,16 @@ export default function DiscoverPage() {
     queryKey: ["/api/books"],
   });
 
+  // Fetch trending books
+  const { data: trendingBooks = [], isLoading: isLoadingTrending } = useQuery<Array<{ book: Book, count: number }>>({
+    queryKey: ["/api/trending-books"],
+    queryFn: async () => {
+      const res = await fetch("/api/trending-books");
+      if (!res.ok) throw new Error("Failed to fetch trending books");
+      return res.json();
+    },
+  });
+
   // Initialize personalization data
   useEffect(() => {
     if (books.length > 0) {
@@ -81,6 +91,19 @@ export default function DiscoverPage() {
     }
     
     return true;
+  });
+
+  // Filter trending books by search query and genre
+  const filteredTrendingBooks = trendingBooks.filter(({ book }) => {
+    // Genre filter
+    if (selectedGenre !== "all" && book.genre !== selectedGenre) return false;
+    // Search filter
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      book.title.toLowerCase().includes(query) ||
+      book.author.toLowerCase().includes(query)
+    );
   });
 
   const handleAddToShelf = (book: Book) => {
@@ -163,139 +186,34 @@ export default function DiscoverPage() {
           <Tabs defaultValue="trending" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
               <TabsTrigger value="trending">Trending</TabsTrigger>
-              <TabsTrigger value="for-you">For You</TabsTrigger>
-              <TabsTrigger value="new-releases">New Releases</TabsTrigger>
             </TabsList>
 
             {/* Trending tab */}
             <TabsContent value="trending">
-              {isLoading ? (
+              {isLoadingTrending ? (
                 <div className="py-10 text-center">Loading trending books...</div>
-              ) : filteredBooks.length > 0 ? (
+              ) : filteredTrendingBooks.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {filteredBooks.map(book => (
-                    <TrendingBookCard
-                      key={book.id}
-                      book={book}
-                      readers={Math.floor(Math.random() * 1000) + 100}
-                      averageRating={4 + Math.random()}
-                      onAddToShelf={() => handleAddToShelf(book)}
-                    />
-                  ))}
+                  {filteredTrendingBooks.map((item) => {
+                    const { book, count } = item as { book: Book, count: number };
+                    return (
+                      <TrendingBookCard
+                        key={book.id}
+                        book={book}
+                        readers={count}
+                        averageRating={4 + Math.random()}
+                        onAddToShelf={() => handleAddToShelf(book)}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-10">
                   <div className="text-5xl mb-4">📚</div>
-                  <h3 className="text-xl font-semibold mb-2">No books found</h3>
+                  <h3 className="text-xl font-semibold mb-2">No books match your filters</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Try adjusting your search or filters to find more books.
+                    Try a different search or genre.
                   </p>
-                </div>
-              )}
-            </TabsContent>
-
-            {/* For You tab */}
-            <TabsContent value="for-you">
-              {!hasUserConsent ? (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6 border border-amber-200 dark:border-amber-800">
-                  <div className="flex items-start">
-                    <Sparkles className="h-5 w-5 text-amber-500 mr-3 mt-1 flex-shrink-0" />
-                    <div>
-                      <h3 className="font-serif text-xl font-semibold mb-2">
-                        Personalized Recommendations
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        Enable cookies for personalized book recommendations based on your reading preferences and browsing patterns.
-                      </p>
-                      <Button
-                        variant="outline" 
-                        size="sm"
-                        className="border-amber-500 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/50"
-                        onClick={() => {
-                          toast({
-                            title: "Cookie Settings",
-                            description: "You can enable personalization from the cookie banner at the bottom of the page."
-                          });
-                        }}
-                      >
-                        Enable Personalization
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-10">
-                <h3 className="font-serif text-xl font-semibold text-primary mb-4">
-                  Recommended For You
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                  {hasUserConsent 
-                    ? "Personalized recommendations based on your reading history and preferences" 
-                    : "Popular books we think you might enjoy"}
-                </p>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Recommendation cards */}
-                  {personalizedBooks.slice(0, 6).map(book => (
-                    <div key={book.id} className="flex bg-bookcream-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                      <img 
-                        src={book.coverImage || "https://via.placeholder.com/200x300?text=No+Cover"} 
-                        className="w-24 h-full object-cover" 
-                        alt={`Cover for ${book.title}`} 
-                      />
-                      <div className="p-3 flex-1">
-                        <h4 className="font-serif font-bold text-md mb-1">{book.title}</h4>
-                        <p className="text-gray-600 dark:text-gray-400 text-xs mb-2">{book.author}</p>
-                        {hasUserConsent && book.genre && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                            {favGenres.includes(book.genre) 
-                              ? `Because you enjoy ${book.genre} books`
-                              : book.genre}
-                          </p>
-                        )}
-                        <div className="flex justify-between items-center">
-                          <div className="flex text-yellow-400 text-xs">
-                            ★★★★☆
-                          </div>
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleAddToShelf(book)}
-                          >
-                            Add
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </TabsContent>
-
-            {/* New Releases tab */}
-            <TabsContent value="new-releases">
-              {isLoading ? (
-                <div className="py-10 text-center">Loading new releases...</div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {filteredBooks
-                    .sort((a, b) => {
-                      // Sort by publication date (newest first)
-                      if (!a.publicationDate) return 1;
-                      if (!b.publicationDate) return -1;
-                      return new Date(b.publicationDate).getTime() - new Date(a.publicationDate).getTime();
-                    })
-                    .slice(0, 8)
-                    .map(book => (
-                      <TrendingBookCard
-                        key={book.id}
-                        book={book}
-                        readers={Math.floor(Math.random() * 500) + 50}
-                        averageRating={4 + Math.random() * 0.5}
-                        onAddToShelf={() => handleAddToShelf(book)}
-                      />
-                    ))
-                  }
                 </div>
               )}
             </TabsContent>
