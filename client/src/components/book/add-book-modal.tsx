@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { insertUserBookSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
 
 type Book = {
   id: number;
@@ -32,6 +33,7 @@ type Book = {
 interface AddBookModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  prefillBook?: Book | null;
 }
 
 const bookFormSchema = insertBookSchema.extend({
@@ -51,7 +53,7 @@ const bookDetailsSchema = insertUserBookSchema.extend({
 type BookFormValues = z.infer<typeof bookFormSchema>;
 type BookDetailsValues = z.infer<typeof bookDetailsSchema>;
 
-export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
+export function AddBookModal({ open, onOpenChange, prefillBook }: AddBookModalProps) {
   const [activeTab, setActiveTab] = useState("search");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<Book[]>([]);
@@ -65,6 +67,10 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [googleResults, setGoogleResults] = useState<Book[]>([]);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const { data: userBooks = [] } = useQuery<any[]>({
+    queryKey: ["/api/user-books"],
+    enabled: open,
+  });
 
   const bookForm = useForm<BookFormValues>({
     resolver: zodResolver(bookFormSchema),
@@ -77,6 +83,24 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
       isbn: "",
     },
   });
+
+  // Prefill logic
+  useEffect(() => {
+    if (open && prefillBook) {
+      setSelectedBook(prefillBook);
+      bookForm.reset({
+        title: typeof prefillBook.title === 'string' ? prefillBook.title : (prefillBook.title ? String(prefillBook.title) : ''),
+        author: typeof prefillBook.author === 'string' ? prefillBook.author : (prefillBook.author ? String(prefillBook.author) : ''),
+        coverImage: typeof prefillBook.coverImage === 'string' ? prefillBook.coverImage : (prefillBook.coverImage ? String(prefillBook.coverImage) : undefined),
+        genre: typeof prefillBook.genre === 'string' ? prefillBook.genre : (prefillBook.genre ? String(prefillBook.genre) : undefined),
+        publicationDate: typeof prefillBook.publicationDate === 'string' ? prefillBook.publicationDate : (prefillBook.publicationDate ? String(prefillBook.publicationDate) : undefined),
+        isbn: typeof prefillBook.isbn === 'string' ? prefillBook.isbn : (prefillBook.isbn ? String(prefillBook.isbn) : undefined),
+      });
+    } else if (!open) {
+      setSelectedBook(null);
+      bookForm.reset();
+    }
+  }, [open, prefillBook]);
 
   const handleSearch = async (term: string) => {
     if (!term.trim()) return;
@@ -108,12 +132,12 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
     setSelectedBook(book);
     // Optionally, fill the manual form with this book's details
     bookForm.reset({
-      title: book.title && typeof book.title === 'string' ? book.title : undefined,
-      author: book.author && typeof book.author === 'string' ? book.author : undefined,
-      coverImage: book.coverImage && typeof book.coverImage === 'string' ? book.coverImage : undefined,
-      genre: book.genre && typeof book.genre === 'string' ? book.genre : undefined,
-      publicationDate: book.publicationDate && typeof book.publicationDate === 'string' ? book.publicationDate : undefined,
-      isbn: book.isbn && typeof book.isbn === 'string' ? book.isbn : undefined,
+      title: typeof book.title === 'string' ? book.title : (book.title ? String(book.title) : ''),
+      author: typeof book.author === 'string' ? book.author : (book.author ? String(book.author) : ''),
+      coverImage: typeof book.coverImage === 'string' ? book.coverImage : (book.coverImage ? String(book.coverImage) : undefined),
+      genre: typeof book.genre === 'string' ? book.genre : (book.genre ? String(book.genre) : undefined),
+      publicationDate: typeof book.publicationDate === 'string' ? book.publicationDate : (book.publicationDate ? String(book.publicationDate) : undefined),
+      isbn: typeof book.isbn === 'string' ? book.isbn : (book.isbn ? String(book.isbn) : undefined),
     });
   };
 
@@ -168,14 +192,32 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
 
   const onSubmit = async () => {
     if (selectedBook) {
-      // If we selected a book from search, use its data
+      // Check if book is already in user's bookshelf (by title+author, case-insensitive)
+      const alreadyExists = userBooks.some((ub) =>
+        ub.book &&
+        ub.book.title &&
+        ub.book.author &&
+        selectedBook.title &&
+        selectedBook.author &&
+        ub.book.title.trim().toLowerCase() === selectedBook.title.trim().toLowerCase() &&
+        ub.book.author.trim().toLowerCase() === selectedBook.author.trim().toLowerCase()
+      );
+      if (alreadyExists) {
+        toast({
+          title: "Book already in shelf",
+          description: "Selected book is already present in your bookshelf.",
+          variant: "destructive",
+        });
+        return;
+      }
+      // If not present, proceed to add
       await handleCreateBook({
-        title: selectedBook.title,
-        author: selectedBook.author,
-        coverImage: selectedBook.coverImage,
-        genre: selectedBook.genre,
-        publicationDate: selectedBook.publicationDate,
-        isbn: selectedBook.isbn,
+        title: selectedBook.title ?? '',
+        author: selectedBook.author ?? '',
+        coverImage: selectedBook.coverImage === null ? undefined : selectedBook.coverImage,
+        genre: selectedBook.genre === null ? undefined : selectedBook.genre,
+        publicationDate: selectedBook.publicationDate === null ? undefined : selectedBook.publicationDate,
+        isbn: selectedBook.isbn === null ? undefined : selectedBook.isbn,
       });
     } else {
       // Otherwise use the manual form data
@@ -228,12 +270,12 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
     setGoogleResults([]);
     setSearchTerm(book.title);
     bookForm.reset({
-      title: book.title && typeof book.title === 'string' ? book.title : undefined,
-      author: book.author && typeof book.author === 'string' ? book.author : undefined,
-      coverImage: book.coverImage && typeof book.coverImage === 'string' ? book.coverImage : undefined,
-      genre: book.genre && typeof book.genre === 'string' ? book.genre : undefined,
-      publicationDate: book.publicationDate && typeof book.publicationDate === 'string' ? book.publicationDate : undefined,
-      isbn: book.isbn && typeof book.isbn === 'string' ? book.isbn : undefined,
+      title: typeof book.title === 'string' ? book.title : (book.title ? String(book.title) : ''),
+      author: typeof book.author === 'string' ? book.author : (book.author ? String(book.author) : ''),
+      coverImage: typeof book.coverImage === 'string' ? book.coverImage : (book.coverImage ? String(book.coverImage) : undefined),
+      genre: typeof book.genre === 'string' ? book.genre : (book.genre ? String(book.genre) : undefined),
+      publicationDate: typeof book.publicationDate === 'string' ? book.publicationDate : (book.publicationDate ? String(book.publicationDate) : undefined),
+      isbn: typeof book.isbn === 'string' ? book.isbn : (book.isbn ? String(book.isbn) : undefined),
     });
   };
 

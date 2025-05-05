@@ -107,7 +107,13 @@ export default function DiscoverPage() {
   });
 
   const handleAddToShelf = (book: Book) => {
-    setSelectedBook(book);
+    setSelectedBook({
+      ...book,
+      coverImage: book.coverImage === null ? undefined : book.coverImage,
+      genre: book.genre === null ? undefined : book.genre,
+      publicationDate: book.publicationDate === null ? undefined : book.publicationDate,
+      isbn: book.isbn === null ? undefined : book.isbn,
+    });
     setIsAddBookModalOpen(true);
   };
 
@@ -263,10 +269,10 @@ export default function DiscoverPage() {
       </section>
 
       {/* Add Book Modal */}
-      <AddBookModal 
-        open={isAddBookModalOpen} 
-        onOpenChange={setIsAddBookModalOpen} 
-      />
+      <AddBookModal open={isAddBookModalOpen} onOpenChange={(open) => {
+        setIsAddBookModalOpen(open);
+        if (!open) setSelectedBook(null);
+      }} prefillBook={selectedBook} />
     </div>
   );
 }
