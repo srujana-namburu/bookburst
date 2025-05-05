@@ -154,55 +154,6 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Reading Challenges */}
-      <section>
-        <h2 className="font-serif text-3xl font-bold text-gray-800 dark:text-gray-100 mb-6">
-          Reading Challenges
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="p-4">
-            <div className="flex justify-between items-start mb-3">
-              <h4 className="font-serif font-bold text-lg">2023 Reading Challenge</h4>
-              <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">In Progress</span>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
-              You've read {userBooks?.filter(b => b.status === "finished").length || 0} of 30 books this year
-            </p>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-4">
-              <div 
-                className="bg-primary h-2.5 rounded-full" 
-                style={{ width: `${((userBooks?.filter(b => b.status === "finished").length || 0) / 30) * 100}%` }}
-              ></div>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500 dark:text-gray-400">
-                {Math.round(((userBooks?.filter(b => b.status === "finished").length || 0) / 30) * 100)}% complete
-              </span>
-              <Button variant="ghost" className="text-primary font-medium">View Details</Button>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex justify-between items-start mb-3">
-              <h4 className="font-serif font-bold text-lg">Genres Exploration</h4>
-              <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full">In Progress</span>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">Read books from 5 different genres</p>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-4">
-              <div 
-                className="bg-primary h-2.5 rounded-full" 
-                style={{ width: "60%" }}
-              ></div>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500 dark:text-gray-400">3 of 5 genres</span>
-              <Button variant="ghost" className="text-primary font-medium">View Details</Button>
-            </div>
-          </Card>
-        </div>
-      </section>
-
       {/* Floating Add Button */}
       <Button
         className="bg-primary hover:bg-primary/90 text-white p-2 rounded-full shadow-md transition-all fixed bottom-6 right-6 z-20 flex items-center justify-center"
