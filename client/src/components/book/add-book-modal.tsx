@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,9 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
   const [isPublic, setIsPublic] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [googleResults, setGoogleResults] = useState<Book[]>([]);
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const bookForm = useForm<BookFormValues>({
     resolver: zodResolver(bookFormSchema),
@@ -105,12 +108,12 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
     setSelectedBook(book);
     // Optionally, fill the manual form with this book's details
     bookForm.reset({
-      title: book.title,
-      author: book.author,
-      coverImage: book.coverImage,
-      genre: book.genre,
-      publicationDate: book.publicationDate,
-      isbn: book.isbn,
+      title: book.title && typeof book.title === 'string' ? book.title : undefined,
+      author: book.author && typeof book.author === 'string' ? book.author : undefined,
+      coverImage: book.coverImage && typeof book.coverImage === 'string' ? book.coverImage : undefined,
+      genre: book.genre && typeof book.genre === 'string' ? book.genre : undefined,
+      publicationDate: book.publicationDate && typeof book.publicationDate === 'string' ? book.publicationDate : undefined,
+      isbn: book.isbn && typeof book.isbn === 'string' ? book.isbn : undefined,
     });
   };
 
@@ -180,6 +183,60 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
     }
   };
 
+  // Google Books API search
+  const fetchGoogleBooks = async (term: string) => {
+    if (!term.trim()) return setGoogleResults([]);
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=5`
+      );
+      const data = await res.json();
+      if (!data.items) return setGoogleResults([]);
+      const results: Book[] = data.items.map((item: any) => ({
+        id: item.id,
+        title: item.volumeInfo.title || "",
+        author: (item.volumeInfo.authors && item.volumeInfo.authors.join(", ")) || "",
+        coverImage:
+          (item.volumeInfo.imageLinks && (item.volumeInfo.imageLinks.thumbnail || item.volumeInfo.imageLinks.smallThumbnail)) || "",
+        genre: (item.volumeInfo.categories && item.volumeInfo.categories[0]) || "",
+        publicationDate: item.volumeInfo.publishedDate || "",
+        isbn:
+          (item.volumeInfo.industryIdentifiers && item.volumeInfo.industryIdentifiers[0]?.identifier) || "",
+      }));
+      setGoogleResults(results);
+      setDropdownOpen(true);
+    } catch (e) {
+      setGoogleResults([]);
+      setDropdownOpen(false);
+    }
+  };
+
+  // Debounced search
+  const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setDropdownOpen(!!value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      fetchGoogleBooks(value);
+    }, 400);
+  };
+
+  const handleSelectGoogleBook = (book: Book) => {
+    setSelectedBook(book);
+    setDropdownOpen(false);
+    setGoogleResults([]);
+    setSearchTerm(book.title);
+    bookForm.reset({
+      title: book.title && typeof book.title === 'string' ? book.title : undefined,
+      author: book.author && typeof book.author === 'string' ? book.author : undefined,
+      coverImage: book.coverImage && typeof book.coverImage === 'string' ? book.coverImage : undefined,
+      genre: book.genre && typeof book.genre === 'string' ? book.genre : undefined,
+      publicationDate: book.publicationDate && typeof book.publicationDate === 'string' ? book.publicationDate : undefined,
+      isbn: book.isbn && typeof book.isbn === 'string' ? book.isbn : undefined,
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -198,21 +255,44 @@ export function AddBookModal({ open, onOpenChange }: AddBookModalProps) {
               <div className="grid flex-1 gap-2">
                 <Label htmlFor="book-search">Search by title, author, or ISBN</Label>
                 <div className="relative">
-                  <Input 
+                  <Input
                     id="book-search"
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={handleSearchInput}
                     placeholder="Search for a book"
                     className="pr-10"
+                    autoComplete="off"
                   />
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="icon"
                     className="absolute right-0 top-0 h-full"
-                    onClick={() => handleSearch(searchTerm)}
+                    onClick={() => fetchGoogleBooks(searchTerm)}
                   >
                     <Search className="h-4 w-4" />
                   </Button>
+                  {/* Google Books Dropdown */}
+                  {dropdownOpen && googleResults.length > 0 && (
+                    <div className="absolute z-50 left-0 right-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded shadow-lg mt-1 max-h-80 overflow-y-auto">
+                      {googleResults.map((book) => (
+                        <div
+                          key={book.id}
+                          className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-primary/10"
+                          onClick={() => handleSelectGoogleBook(book)}
+                        >
+                          <img
+                            src={book.coverImage || "https://via.placeholder.com/40x60?text=No+Cover"}
+                            alt={book.title}
+                            className="w-10 h-16 object-cover rounded"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{book.title}</div>
+                            <div className="text-xs text-gray-500 truncate">{book.author}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
